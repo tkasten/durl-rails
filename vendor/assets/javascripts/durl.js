@@ -1,6 +1,6 @@
 /*
  * File: durl.js
- * Version: 1.0.5
+ * Version: 1.0.6
  * Desc: DURL keeps your i-frame's Deep URL stored in the hash fragment of your parent page
  * Doc: https://github.com/tkasten/durl
  * Author: Tyler Kasten tyler.kasten@gmail.com
@@ -51,37 +51,37 @@ Durl.prototype.bootAsConsumer = function(){
 }
 
 Durl.prototype.matchDeepPath = function(path) {
-  /**
-    *
-    * DURL will store its durl (deep url) in the consumer's hash fragment in the
-    * form of `this.deep_url_var_name=url_encoded_url`
-    * 
-    * But we don't know how the consumer is using their hash fragment so we try
-    * to make safe, unobtrusive assumptions about how to integrate our data into
-    * their fragment. Consider the following potential use cases on their end:
-    *
-    * TKK TODO - spec these cases (also need more cases/clean-up etc)...
-    *
-    * Hash Bang style followed with traditional path and url variables
-    * www.example.com/page/path?var1=stuff#!/some/path?p1=v1&durl=value!&p2=v2z
-    * www.example.com/page/path?var1=stuff#!/some/path?p1=v1&durl=value!
-    *
-    * Same as above case but no consumer variables mixed with durl
-    * www.example.com/page/path?vars=stuff#!/some/path?durl=value!
-    *
-    * No Bang(!) just right into the variables
-    * www.example.com/page/path#?p1=v2&durl=value!
-    *
-    * Same as above but no consumer variables mixed with durl
-    * www.example.com/page/path#?durl=value!
-    *
-    */
-
   pattern = new RegExp("(\\?|&)" + this.deep_url_var_name + "=([^&\n]*)")
   return pattern.exec(this.vanillaHash()) || '' // [whole match, joiner, url]
 }
 
 Durl.prototype.setDURL = function(new_url) {
+/**
+  *
+  * DURL will store its durl (deep url) in the consumer's hash fragment in the
+  * form of `this.deep_url_var_name=url_encoded_url`
+  * 
+  * But we don't know how the consumer is using their hash fragment so we try
+  * to make safe, unobtrusive assumptions about how to integrate our data into
+  * their fragment. Consider the following potential use cases on their end:
+  *
+  * TKK TODO - spec these cases (also need more cases/clean-up etc)...
+  *
+  * Hash Bang style followed with traditional path and url variables
+  * www.example.com/page/path?var1=stuff#!/some/path?p1=v1&durl=value!&p2=v2z
+  * www.example.com/page/path?var1=stuff#!/some/path?p1=v1&durl=value!
+  *
+  * Same as above case but no consumer variables mixed with durl
+  * www.example.com/page/path?vars=stuff#!/some/path?durl=value!
+  *
+  * No Bang(!) just right into the variables
+  * www.example.com/page/path#?p1=v2&durl=value!
+  *
+  * Same as above but no consumer variables mixed with durl
+  * www.example.com/page/path#?durl=value!
+  *
+  */
+
   new_url = new_url || ''
   hash = this.vanillaHash()
 
@@ -97,9 +97,35 @@ Durl.prototype.setDURL = function(new_url) {
     hash += hash.indexOf('?') == -1 ? '?' : '&'
     hash += this.deep_url_var_name + "=" + new_url
   }
-
   this.log('replacing location: ' + hash)
-  location.replace('#' + hash)
+  // the following would be ideal but `history` object isn't supported < IE11
+  // history.replaceState(undefined, undefined, "#hash_value")
+
+  // so I did this instead...
+
+  // location.replace('#' + hash)
+
+  // That worked great. No new history transaction or page navigation event.
+  // However if the document has a silly base tag in it like:
+
+  // <base href="http://example.com/">
+
+  // Then this approach behaves as if you said:
+
+  // location.replace('example.com/#hash_value_here')
+
+  // That's cool if you're actually sitting on example.com/, but if you at
+  // a path like example.com/some/page and you:
+
+  // location.replace('#' + hash)
+
+  // it navigate off to that base url plus the hash fragment.
+
+  // This seem obvious when you read it here, but is was a nasty gotcha
+  // if your consumer sets the damned 'base' tag.
+
+  // So anyways, here we just force it to stay local like this:
+  location.replace(window.location.pathname + '#' + hash)
 }
 
 Durl.prototype.getDeepPath = function() {

@@ -50,7 +50,8 @@ You're done!
 
 ## Contributing
 
-Feel free to open an issue ticket if you find something that could be improved. 
+If the NPM DURL library changes, run rake update_durl and commit.
+It will pull from source the latest version of DURL and will also bump the version of this gem.
 
 ## Acknowledgements
 
